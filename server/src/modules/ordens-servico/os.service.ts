@@ -1,3 +1,4 @@
+import { ItemTipo } from "@prisma/client";
 import { prisma } from "../../db/client";
 import { ApiError } from "../../utils/ApiError";
 import { podeTransicionar } from "./os-status";
@@ -7,6 +8,7 @@ import {
   UpdateOrdemInput,
 } from "./os.schema";
 import { calcularSituacaoPagamento } from "./pagamentos.util";
+import { calcularSituacaoParcela } from "./parcelas.util";
 
 const includeCompleto = {
   cliente: true,
@@ -46,8 +48,40 @@ export async function getOrdem(id: number) {
 export async function getOrdemComSituacao(id: number) {
   const os = await getOrdem(id);
   const pagamentos = await prisma.pagamento.findMany({ where: { osId: id } });
+  const itens = await prisma.ordemItem.findMany({
+    where: { osId: id },
+    orderBy: { criadoEm: "asc" },
+  });
+  const parcelasRaw = await prisma.parcela.findMany({
+    where: { osId: id },
+    orderBy: { numero: "asc" },
+  });
+  const parcelas = parcelasRaw.map((p) => ({
+    ...p,
+    situacao: calcularSituacaoParcela(p.dataVencimento, p.pagamentoId),
+  }));
   const situacao = calcularSituacaoPagamento(os.valorTotalCentavos, pagamentos);
-  return { ...os, ...situacao };
+  return { ...os, ...situacao, itens, parcelas };
+}
+
+export async function recomputeValoresOS(osId: number, tipo: ItemTipo) {
+  const itensDoTipo = await prisma.ordemItem.findMany({ where: { osId, tipo } });
+  if (itensDoTipo.length === 0) return;
+
+  const total = itensDoTipo.reduce((acc, i) => acc + i.precoTotalCentavos, 0);
+  const os = await prisma.ordemServico.findUniqueOrThrow({ where: { id: osId } });
+
+  const valorPecasCentavos = tipo === "peca" ? total : os.valorPecasCentavos;
+  const valorMaoObraCentavos = tipo === "servico" ? total : os.valorMaoObraCentavos;
+
+  await prisma.ordemServico.update({
+    where: { id: osId },
+    data: {
+      valorPecasCentavos,
+      valorMaoObraCentavos,
+      valorTotalCentavos: (valorPecasCentavos ?? 0) + (valorMaoObraCentavos ?? 0),
+    },
+  });
 }
 
 export async function getHistorico(id: number) {
@@ -92,6 +126,7 @@ export async function createOrdem(input: CreateOrdemInput, usuarioId: number) {
         defeitoRelatado: input.defeitoRelatado,
         dataPrevisao: input.dataPrevisao ? new Date(input.dataPrevisao) : undefined,
         observacoes: input.observacoes,
+        valorOrcamentoCentavos: input.valorOrcamentoCentavos,
       },
     });
 
@@ -104,6 +139,18 @@ export async function createOrdem(input: CreateOrdemInput, usuarioId: number) {
         observacao: "OS aberta",
       },
     });
+
+    if (input.parcelas && input.parcelas.length > 0) {
+      await tx.parcela.createMany({
+        data: input.parcelas.map((p, index) => ({
+          osId: os.id,
+          numero: index + 1,
+          dataVencimento: new Date(p.dataVencimento),
+          valorCentavos: p.valorCentavos,
+          formaPagamento: p.formaPagamento,
+        })),
+      });
+    }
 
     return tx.ordemServico.findUniqueOrThrow({
       where: { id: os.id },
@@ -134,6 +181,8 @@ export async function updateOrdem(id: number, input: UpdateOrdemInput) {
       formaPagamento: input.formaPagamento,
       dataPrevisao: input.dataPrevisao ? new Date(input.dataPrevisao) : undefined,
       observacoes: input.observacoes,
+      garantiaDias: input.garantiaDias,
+      garantiaObservacoes: input.garantiaObservacoes,
     },
     include: includeCompleto,
   });

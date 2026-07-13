@@ -24,6 +24,11 @@ enum StatusOS {
   cancelada
 }
 
+enum ItemTipo {
+  peca
+  servico
+}
+
 model Usuario {
   id        Int      @id @default(autoincrement())
   nome      String
@@ -91,14 +96,33 @@ model OrdemServico {
   dataConclusao        DateTime? @map("data_conclusao")
   dataEntrega          DateTime? @map("data_entrega")
   observacoes          String?
+  garantiaDias           Int?    @map("garantia_dias")
+  garantiaObservacoes    String? @map("garantia_observacoes")
 
   cliente            Cliente           @relation(fields: [clienteId], references: [id])
   equipamento        Equipamento       @relation(fields: [equipamentoId], references: [id])
   tecnicoResponsavel Usuario?          @relation("TecnicoResponsavel", fields: [tecnicoResponsavelId], references: [id])
   historico          HistoricoStatus[]
   pagamentos         Pagamento[]
+  itens              OrdemItem[]
+  parcelas           Parcela[]
 
   @@map("ordens_servico")
+}
+
+model OrdemItem {
+  id                    Int      @id @default(autoincrement())
+  osId                  Int      @map("os_id")
+  tipo                  ItemTipo
+  descricao             String
+  quantidade            Int      @default(1)
+  precoUnitarioCentavos Int      @map("preco_unitario_centavos")
+  precoTotalCentavos    Int      @map("preco_total_centavos")
+  criadoEm              DateTime @default(now()) @map("criado_em")
+
+  os OrdemServico @relation(fields: [osId], references: [id])
+
+  @@map("ordem_itens")
 }
 
 model HistoricoStatus {
@@ -117,16 +141,21 @@ model HistoricoStatus {
 }
 
 model Pagamento {
-  id              Int      @id @default(autoincrement())
-  osId            Int      @map("os_id")
-  valorCentavos   Int      @map("valor_centavos")
-  formaPagamento  String   @map("forma_pagamento")
-  data            DateTime @default(now())
-  observacao      String?
-  registradoPorId Int      @map("registrado_por_id")
+  id                    Int      @id @default(autoincrement())
+  osId                  Int      @map("os_id")
+  valorCentavos         Int      @map("valor_centavos")
+  formaPagamento        String   @map("forma_pagamento")
+  data                  DateTime @default(now())
+  observacao            String?
+  registradoPorId       Int      @map("registrado_por_id")
+  contaFinanceiraId     Int?     @map("conta_financeira_id")
+  categoriaFinanceiraId Int?     @map("categoria_financeira_id")
 
-  os            OrdemServico @relation(fields: [osId], references: [id])
-  registradoPor Usuario      @relation(fields: [registradoPorId], references: [id])
+  os                  OrdemServico         @relation(fields: [osId], references: [id])
+  registradoPor       Usuario              @relation(fields: [registradoPorId], references: [id])
+  contaFinanceira     ContaFinanceira?     @relation(fields: [contaFinanceiraId], references: [id])
+  categoriaFinanceira CategoriaFinanceira? @relation(fields: [categoriaFinanceiraId], references: [id])
+  parcela             Parcela?
 
   @@map("pagamentos")
 }
@@ -138,4 +167,41 @@ model FormaPagamento {
   criadoEm DateTime @default(now()) @map("criado_em")
 
   @@map("formas_pagamento")
+}
+
+model ContaFinanceira {
+  id       Int      @id @default(autoincrement())
+  nome     String   @unique
+  ativo    Boolean  @default(true)
+  criadoEm DateTime @default(now()) @map("criado_em")
+
+  pagamentos Pagamento[]
+
+  @@map("contas_financeiras")
+}
+
+model CategoriaFinanceira {
+  id       Int      @id @default(autoincrement())
+  nome     String   @unique
+  ativo    Boolean  @default(true)
+  criadoEm DateTime @default(now()) @map("criado_em")
+
+  pagamentos Pagamento[]
+
+  @@map("categorias_financeiras")
+}
+
+model Parcela {
+  id             Int       @id @default(autoincrement())
+  osId           Int       @map("os_id")
+  numero         Int
+  dataVencimento DateTime  @map("data_vencimento")
+  valorCentavos  Int       @map("valor_centavos")
+  formaPagamento String?   @map("forma_pagamento")
+  pagamentoId    Int?      @unique @map("pagamento_id")
+
+  os        OrdemServico @relation(fields: [osId], references: [id])
+  pagamento Pagamento?   @relation(fields: [pagamentoId], references: [id])
+
+  @@map("parcelas")
 }

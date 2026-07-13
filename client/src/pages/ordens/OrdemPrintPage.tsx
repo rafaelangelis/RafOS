@@ -72,6 +72,14 @@ export function OrdemPrintPage() {
           <p className="font-semibold">Total: {formatMoneyFromCentavos(os.valorTotalCentavos)}</p>
           {os.formaPagamento && <p>Forma de pagamento: {os.formaPagamento}</p>}
         </div>
+
+        {os.garantiaDias != null && (
+          <div className="border-t border-slate-200 pt-3">
+            <p className="font-semibold text-slate-900">Garantia</p>
+            <p>{os.garantiaDias} dias</p>
+            {os.garantiaObservacoes && <p>{os.garantiaObservacoes}</p>}
+          </div>
+        )}
       </div>
     </div>
   );

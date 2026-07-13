@@ -19,6 +19,12 @@ import {
   updateOrdemSchema,
 } from "./os.schema";
 import {
+  createHandler as createItemHandler,
+  deleteHandler as deleteItemHandler,
+  listHandler as listItensHandler,
+} from "./itens.controller";
+import { criarItemSchema, listItensQuerySchema } from "./itens.schema";
+import {
   createHandler as createPagamentoHandler,
   deleteHandler as deletePagamentoHandler,
   listHandler as listPagamentosHandler,
@@ -63,4 +69,21 @@ ordensRouter.delete(
   "/:id/pagamentos/:pagamentoId",
   requireRole("admin"),
   asyncHandler(deletePagamentoHandler)
+);
+
+ordensRouter.get(
+  "/:id/itens",
+  validate({ query: listItensQuerySchema }),
+  asyncHandler(listItensHandler)
+);
+ordensRouter.post(
+  "/:id/itens",
+  requireRole("admin", "tecnico", "atendente"),
+  validate({ body: criarItemSchema }),
+  asyncHandler(createItemHandler)
+);
+ordensRouter.delete(
+  "/:id/itens/:itemId",
+  requireRole("admin", "tecnico", "atendente"),
+  asyncHandler(deleteItemHandler)
 );

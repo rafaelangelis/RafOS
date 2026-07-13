@@ -39,9 +39,20 @@ async function seedFormasPagamento() {
   console.log("Formas de pagamento padrão garantidas.");
 }
 
+async function seedContasFinanceiras() {
+  await prisma.contaFinanceira.upsert({
+    where: { nome: "Caixa" },
+    update: {},
+    create: { nome: "Caixa" },
+  });
+
+  console.log("Conta financeira padrão (Caixa) garantida.");
+}
+
 async function main() {
   await seedAdmin();
   await seedFormasPagamento();
+  await seedContasFinanceiras();
 }
 
 main()

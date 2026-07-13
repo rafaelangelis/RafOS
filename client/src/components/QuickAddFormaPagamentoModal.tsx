@@ -1,9 +1,4 @@
-import { useState } from "react";
-import { toast } from "sonner";
-import { Button } from "@/components/ui/button";
-import { Modal } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { QuickAddNomeModal } from "@/components/QuickAddNomeModal";
 import {
   useCreateFormaPagamento,
   type FormaPagamento,
@@ -15,64 +10,18 @@ interface QuickAddFormaPagamentoModalProps {
   onCreated: (formaPagamento: FormaPagamento) => void;
 }
 
-export function QuickAddFormaPagamentoModal({
-  open,
-  onClose,
-  onCreated,
-}: QuickAddFormaPagamentoModalProps) {
-  const [nome, setNome] = useState("");
-  const [error, setError] = useState<string | null>(null);
+export function QuickAddFormaPagamentoModal(props: QuickAddFormaPagamentoModalProps) {
   const createFormaPagamento = useCreateFormaPagamento();
 
-  function fechar() {
-    setNome("");
-    setError(null);
-    onClose();
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-
-    if (!nome) {
-      setError("Preencha o nome");
-      return;
-    }
-
-    try {
-      const forma = await createFormaPagamento.mutateAsync(nome);
-      toast.success("Forma de pagamento cadastrada");
-      onCreated(forma);
-      fechar();
-    } catch {
-      setError("Não foi possível cadastrar (talvez já exista)");
-    }
-  }
-
   return (
-    <Modal open={open} onClose={fechar} title="Nova Forma de Pagamento">
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="space-y-1">
-          <Label required>Nome</Label>
-          <Input
-            value={nome}
-            onChange={(e) => setNome(e.target.value)}
-            placeholder="ex: Transferência, Vale, Cheque..."
-            autoFocus
-          />
-        </div>
-
-        {error && <p className="text-sm text-red-600">{error}</p>}
-
-        <div className="flex justify-end gap-2 pt-2">
-          <Button type="button" variant="outline" onClick={fechar}>
-            Cancelar
-          </Button>
-          <Button type="submit" disabled={createFormaPagamento.isPending}>
-            {createFormaPagamento.isPending ? "Salvando..." : "Cadastrar"}
-          </Button>
-        </div>
-      </form>
-    </Modal>
+    <QuickAddNomeModal
+      {...props}
+      title="Nova Forma de Pagamento"
+      placeholder="ex: Transferência, Vale, Cheque..."
+      successMessage="Forma de pagamento cadastrada"
+      errorMessage="Não foi possível cadastrar (talvez já exista)"
+      isPending={createFormaPagamento.isPending}
+      onSubmit={(nome) => createFormaPagamento.mutateAsync(nome)}
+    />
   );
 }

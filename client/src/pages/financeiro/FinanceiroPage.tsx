@@ -5,12 +5,14 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PagamentoStatusBadge } from "@/components/PagamentoStatusBadge";
+import { ParcelaStatusBadge } from "@/components/ParcelaStatusBadge";
 import { RegistrarPagamentoModal } from "@/components/RegistrarPagamentoModal";
 import {
   baixarCsv,
   useContasAReceber,
-  type ContaReceber,
+  useParcelasEmAberto,
   useRecebidoPeriodo,
+  useSaldoPorConta,
 } from "@/features/financeiro/financeiro.api";
 import { formatDate, formatMoneyFromCentavos } from "@/lib/utils";
 
@@ -24,19 +26,27 @@ function ultimoDiaDoMes() {
   return new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0).toISOString().slice(0, 10);
 }
 
+interface PagamentoAlvo {
+  osId: number;
+  parcelaId?: number;
+  clienteNome: string;
+  saldoDevedorCentavos: number | null;
+}
+
 export function FinanceiroPage() {
   const [inicio, setInicio] = useState(primeiroDiaDoMes());
   const [fim, setFim] = useState(ultimoDiaDoMes());
 
   const { data: contasAReceber, isLoading: carregandoContas } = useContasAReceber();
+  const { data: parcelasEmAberto, isLoading: carregandoParcelas } = useParcelasEmAberto();
   const { data: recebido, isLoading: carregandoRecebido } = useRecebidoPeriodo(inicio, fim);
+  const { data: saldoPorConta } = useSaldoPorConta();
 
-  const [osSelecionada, setOsSelecionada] = useState<ContaReceber | null>(null);
+  const [pagamentoAlvo, setPagamentoAlvo] = useState<PagamentoAlvo | null>(null);
 
-  const totalAReceberCentavos = (contasAReceber ?? []).reduce(
-    (acc, os) => acc + (os.saldoDevedorCentavos ?? 0),
-    0
-  );
+  const totalAReceberCentavos =
+    (contasAReceber ?? []).reduce((acc, os) => acc + (os.saldoDevedorCentavos ?? 0), 0) +
+    (parcelasEmAberto ?? []).reduce((acc, p) => acc + p.valorCentavos, 0);
 
   async function exportar() {
     await baixarCsv(inicio, fim);
@@ -60,7 +70,7 @@ export function FinanceiroPage() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <Card>
           <CardContent className="p-4">
             <p className="text-xs font-medium uppercase text-slate-500">A receber (total)</p>
@@ -98,11 +108,91 @@ export function FinanceiroPage() {
             )}
           </CardContent>
         </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="mb-1 text-xs font-medium uppercase text-slate-500">Saldo por conta</p>
+            {saldoPorConta && saldoPorConta.length > 0 ? (
+              <ul className="text-sm">
+                {saldoPorConta.map((s) => (
+                  <li key={s.conta.id} className="flex justify-between">
+                    <span className="text-slate-600">{s.conta.nome}</span>
+                    <span className="font-medium text-slate-900">
+                      {formatMoneyFromCentavos(s.saldoCentavos)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-slate-400">Sem contas cadastradas</p>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
         <CardHeader className="font-semibold text-slate-900">
-          Contas a receber {contasAReceber && `(${contasAReceber.length})`}
+          Parcelas em aberto {parcelasEmAberto && `(${parcelasEmAberto.length})`}
+        </CardHeader>
+        <CardContent>
+          {carregandoParcelas && <p className="text-slate-500">Carregando...</p>}
+
+          {parcelasEmAberto && parcelasEmAberto.length === 0 && (
+            <p className="text-sm text-slate-400">Nenhuma parcela pendente. 🎉</p>
+          )}
+
+          {parcelasEmAberto && parcelasEmAberto.length > 0 && (
+            <table className="w-full text-sm">
+              <thead className="text-left text-slate-500">
+                <tr>
+                  <th className="py-1">OS</th>
+                  <th className="py-1">Cliente</th>
+                  <th className="py-1">Parcela</th>
+                  <th className="py-1">Vencimento</th>
+                  <th className="py-1">Valor</th>
+                  <th className="py-1">Situação</th>
+                  <th className="py-1"></th>
+                </tr>
+              </thead>
+              <tbody>
+                {parcelasEmAberto.map((p) => (
+                  <tr key={p.id} className="border-t border-slate-100">
+                    <td className="py-2 font-medium">#{p.osId}</td>
+                    <td className="py-2">{p.os.cliente.nome}</td>
+                    <td className="py-2">{p.numero}</td>
+                    <td className="py-2">{formatDate(p.dataVencimento)}</td>
+                    <td className="py-2">{formatMoneyFromCentavos(p.valorCentavos)}</td>
+                    <td className="py-2">
+                      <ParcelaStatusBadge status={p.situacao} />
+                    </td>
+                    <td className="py-2 text-right">
+                      <button
+                        onClick={() =>
+                          setPagamentoAlvo({
+                            osId: p.osId,
+                            parcelaId: p.id,
+                            clienteNome: p.os.cliente.nome,
+                            saldoDevedorCentavos: p.valorCentavos,
+                          })
+                        }
+                        className="mr-3 text-slate-600 hover:underline"
+                      >
+                        Registrar pagamento
+                      </button>
+                      <Link to={`/ordens/${p.osId}`} className="text-slate-600 hover:underline">
+                        Ver
+                      </Link>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="font-semibold text-slate-900">
+          Outras contas em aberto {contasAReceber && `(${contasAReceber.length})`}
         </CardHeader>
         <CardContent>
           {carregandoContas && <p className="text-slate-500">Carregando...</p>}
@@ -141,7 +231,13 @@ export function FinanceiroPage() {
                     <td className="py-2">{formatDate(os.dataPrevisao)}</td>
                     <td className="py-2 text-right">
                       <button
-                        onClick={() => setOsSelecionada(os)}
+                        onClick={() =>
+                          setPagamentoAlvo({
+                            osId: os.id,
+                            clienteNome: os.cliente.nome,
+                            saldoDevedorCentavos: os.saldoDevedorCentavos ?? null,
+                          })
+                        }
                         className="mr-3 text-slate-600 hover:underline"
                       >
                         Registrar pagamento
@@ -159,11 +255,12 @@ export function FinanceiroPage() {
       </Card>
 
       <RegistrarPagamentoModal
-        open={!!osSelecionada}
-        onClose={() => setOsSelecionada(null)}
-        osId={osSelecionada?.id ?? null}
-        clienteNome={osSelecionada?.cliente.nome}
-        saldoDevedorCentavos={osSelecionada?.saldoDevedorCentavos}
+        open={!!pagamentoAlvo}
+        onClose={() => setPagamentoAlvo(null)}
+        osId={pagamentoAlvo?.osId ?? null}
+        parcelaId={pagamentoAlvo?.parcelaId ?? null}
+        clienteNome={pagamentoAlvo?.clienteNome}
+        saldoDevedorCentavos={pagamentoAlvo?.saldoDevedorCentavos}
       />
     </div>
   );

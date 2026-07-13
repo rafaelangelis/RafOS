@@ -43,6 +43,31 @@ export interface TecnicoResumo {
   role: string;
 }
 
+export type ItemTipo = "peca" | "servico";
+
+export interface OrdemItem {
+  id: number;
+  osId: number;
+  tipo: ItemTipo;
+  descricao: string;
+  quantidade: number;
+  precoUnitarioCentavos: number;
+  precoTotalCentavos: number;
+}
+
+export type StatusParcela = "paga" | "atrasada" | "pendente";
+
+export interface Parcela {
+  id: number;
+  osId: number;
+  numero: number;
+  dataVencimento: string;
+  valorCentavos: number;
+  formaPagamento: string | null;
+  pagamentoId: number | null;
+  situacao: StatusParcela;
+}
+
 export interface OrdemServico {
   id: number;
   clienteId: number;
@@ -61,12 +86,16 @@ export interface OrdemServico {
   dataConclusao: string | null;
   dataEntrega: string | null;
   observacoes: string | null;
+  garantiaDias: number | null;
+  garantiaObservacoes: string | null;
   cliente: Cliente;
   equipamento: Equipamento;
   tecnicoResponsavel: TecnicoResumo | null;
   valorPagoCentavos?: number;
   saldoDevedorCentavos?: number | null;
   statusPagamento?: StatusPagamento;
+  itens?: OrdemItem[];
+  parcelas?: Parcela[];
 }
 
 export type StatusPagamento = "sem_valor" | "pendente" | "parcial" | "pago";
@@ -96,6 +125,12 @@ export interface CreateOrdemInput {
   defeitoRelatado: string;
   dataPrevisao?: string;
   observacoes?: string;
+  valorOrcamentoCentavos?: number;
+  parcelas?: {
+    dataVencimento: string;
+    valorCentavos: number;
+    formaPagamento?: string;
+  }[];
 }
 
 export interface UpdateOrdemInput {
@@ -107,6 +142,15 @@ export interface UpdateOrdemInput {
   formaPagamento?: string;
   dataPrevisao?: string;
   observacoes?: string;
+  garantiaDias?: number;
+  garantiaObservacoes?: string;
+}
+
+export interface CreateItemInput {
+  tipo: ItemTipo;
+  descricao: string;
+  quantidade: number;
+  precoUnitarioCentavos: number;
 }
 
 interface ListFilters {
@@ -169,6 +213,29 @@ export function useChangeStatus(id: string) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["ordens", id] });
       queryClient.invalidateQueries({ queryKey: ["ordens", id, "historico"] });
+      queryClient.invalidateQueries({ queryKey: ["ordens"] });
+    },
+  });
+}
+
+export function useCreateItem(osId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: CreateItemInput) =>
+      (await apiClient.post<OrdemItem>(`/ordens/${osId}/itens`, input)).data,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ordens", osId] });
+      queryClient.invalidateQueries({ queryKey: ["ordens"] });
+    },
+  });
+}
+
+export function useDeleteItem(osId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (itemId: number) => apiClient.delete(`/ordens/${osId}/itens/${itemId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ordens", osId] });
       queryClient.invalidateQueries({ queryKey: ["ordens"] });
     },
   });

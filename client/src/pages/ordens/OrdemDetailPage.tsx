@@ -3,19 +3,15 @@ import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { FieldLabelWithAdd } from "@/components/FieldLabelWithAdd";
+import { ItensLinhaTable } from "@/components/ItensLinhaTable";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PagamentoStatusBadge } from "@/components/PagamentoStatusBadge";
-import { QuickAddFormaPagamentoModal } from "@/components/QuickAddFormaPagamentoModal";
+import { ParcelaStatusBadge } from "@/components/ParcelaStatusBadge";
+import { RegistrarPagamentoModal } from "@/components/RegistrarPagamentoModal";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAuth } from "@/features/auth/AuthContext";
-import {
-  useDeletePagamento,
-  useOsPagamentos,
-  useRegistrarPagamento,
-} from "@/features/financeiro/financeiro.api";
-import { useFormasPagamento } from "@/features/formas-pagamento/formasPagamento.api";
+import { useDeletePagamento, useOsPagamentos } from "@/features/financeiro/financeiro.api";
 import {
   STATUS_LABELS,
   STATUS_TRANSICOES,
@@ -44,10 +40,8 @@ export function OrdemDetailPage() {
   const { data: historico } = useOrdemHistorico(id);
   const { data: tecnicos } = useTecnicos();
   const { data: pagamentos } = useOsPagamentos(id);
-  const { data: formasPagamento } = useFormasPagamento();
   const updateOrdem = useUpdateOrdem(id ?? "");
   const changeStatus = useChangeStatus(id ?? "");
-  const registrarPagamento = useRegistrarPagamento(id ?? "");
   const deletePagamento = useDeletePagamento(id ?? "");
 
   const [diagnostico, setDiagnostico] = useState("");
@@ -57,11 +51,11 @@ export function OrdemDetailPage() {
   const [formaPagamento, setFormaPagamento] = useState("");
   const [tecnicoResponsavelId, setTecnicoResponsavelId] = useState("");
   const [observacoes, setObservacoes] = useState("");
+  const [garantiaDias, setGarantiaDias] = useState("");
+  const [garantiaObservacoes, setGarantiaObservacoes] = useState("");
   const [observacaoStatus, setObservacaoStatus] = useState("");
-  const [novoPagamentoValor, setNovoPagamentoValor] = useState("");
-  const [novoPagamentoForma, setNovoPagamentoForma] = useState("");
-  const [novoPagamentoObs, setNovoPagamentoObs] = useState("");
-  const [novaFormaModalOpen, setNovaFormaModalOpen] = useState(false);
+  const [pagamentoModalOpen, setPagamentoModalOpen] = useState(false);
+  const [parcelaIdSelecionada, setParcelaIdSelecionada] = useState<number | null>(null);
 
   useEffect(() => {
     if (os) {
@@ -72,11 +66,8 @@ export function OrdemDetailPage() {
       setFormaPagamento(os.formaPagamento ?? "");
       setTecnicoResponsavelId(os.tecnicoResponsavelId ? String(os.tecnicoResponsavelId) : "");
       setObservacoes(os.observacoes ?? "");
-      setNovoPagamentoValor(
-        os.saldoDevedorCentavos && os.saldoDevedorCentavos > 0
-          ? (os.saldoDevedorCentavos / 100).toFixed(2)
-          : ""
-      );
+      setGarantiaDias(os.garantiaDias != null ? String(os.garantiaDias) : "");
+      setGarantiaObservacoes(os.garantiaObservacoes ?? "");
     }
   }, [os]);
 
@@ -98,6 +89,8 @@ export function OrdemDetailPage() {
         formaPagamento: formaPagamento || undefined,
         tecnicoResponsavelId: tecnicoResponsavelId ? Number(tecnicoResponsavelId) : null,
         observacoes: observacoes || undefined,
+        garantiaDias: garantiaDias ? Number(garantiaDias) : undefined,
+        garantiaObservacoes: garantiaObservacoes || undefined,
       });
       toast.success("OS atualizada");
     } catch {
@@ -118,26 +111,9 @@ export function OrdemDetailPage() {
     }
   }
 
-  async function registrarNovoPagamento() {
-    const valorCentavos = toCentavos(novoPagamentoValor);
-    if (!valorCentavos || valorCentavos <= 0 || !novoPagamentoForma) {
-      toast.error("Informe um valor válido e a forma de pagamento");
-      return;
-    }
-
-    try {
-      await registrarPagamento.mutateAsync({
-        valorCentavos,
-        formaPagamento: novoPagamentoForma,
-        observacao: novoPagamentoObs || undefined,
-      });
-      setNovoPagamentoValor("");
-      setNovoPagamentoForma("");
-      setNovoPagamentoObs("");
-      toast.success("Pagamento registrado");
-    } catch {
-      toast.error("Não foi possível registrar o pagamento");
-    }
+  function abrirModalPagamento(parcelaId: number | null = null) {
+    setParcelaIdSelecionada(parcelaId);
+    setPagamentoModalOpen(true);
   }
 
   async function excluirPagamento(pagamentoId: number) {
@@ -227,34 +203,49 @@ export function OrdemDetailPage() {
             />
           </div>
 
-          <div className="grid grid-cols-3 gap-4">
-            <div className="space-y-1">
-              <Label htmlFor="orcamento">Orçamento (R$)</Label>
+          <div className="space-y-1">
+            <Label htmlFor="orcamento">Orçamento (R$)</Label>
+            <Input
+              id="orcamento"
+              className="max-w-xs"
+              value={valorOrcamento}
+              onChange={(e) => setValorOrcamento(e.target.value)}
+              disabled={!podeEditar}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label>Peças</Label>
+            {(os.itens ?? []).filter((i) => i.tipo === "peca").length === 0 && podeEditar ? (
               <Input
-                id="orcamento"
-                value={valorOrcamento}
-                onChange={(e) => setValorOrcamento(e.target.value)}
-                disabled={!podeEditar}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="pecas">Peças (R$)</Label>
-              <Input
-                id="pecas"
+                placeholder="Valor total de peças (R$) — ou adicione itens abaixo"
                 value={valorPecas}
                 onChange={(e) => setValorPecas(e.target.value)}
-                disabled={!podeEditar}
               />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="maoObra">Mão de obra (R$)</Label>
+            ) : null}
+            <ItensLinhaTable
+              osId={id ?? ""}
+              tipo="peca"
+              itens={(os.itens ?? []).filter((i) => i.tipo === "peca")}
+              podeEditar={podeEditar}
+            />
+          </div>
+
+          <div className="space-y-1">
+            <Label>Serviços executados</Label>
+            {(os.itens ?? []).filter((i) => i.tipo === "servico").length === 0 && podeEditar ? (
               <Input
-                id="maoObra"
+                placeholder="Valor total de mão de obra (R$) — ou adicione itens abaixo"
                 value={valorMaoObra}
                 onChange={(e) => setValorMaoObra(e.target.value)}
-                disabled={!podeEditar}
               />
-            </div>
+            ) : null}
+            <ItensLinhaTable
+              osId={id ?? ""}
+              tipo="servico"
+              itens={(os.itens ?? []).filter((i) => i.tipo === "servico")}
+              podeEditar={podeEditar}
+            />
           </div>
 
           <p className="text-sm text-slate-500">
@@ -294,6 +285,28 @@ export function OrdemDetailPage() {
           <div className="space-y-1">
             <Label htmlFor="observacoes">Observações</Label>
             <Input id="observacoes" value={observacoes} onChange={(e) => setObservacoes(e.target.value)} disabled={!podeEditar} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <Label htmlFor="garantiaDias">Garantia (dias)</Label>
+              <Input
+                id="garantiaDias"
+                value={garantiaDias}
+                onChange={(e) => setGarantiaDias(e.target.value)}
+                placeholder="ex: 90"
+                disabled={!podeEditar}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="garantiaObservacoes">Informações de garantia</Label>
+              <Input
+                id="garantiaObservacoes"
+                value={garantiaObservacoes}
+                onChange={(e) => setGarantiaObservacoes(e.target.value)}
+                disabled={!podeEditar}
+              />
+            </div>
           </div>
 
           {podeEditar && (
@@ -342,6 +355,12 @@ export function OrdemDetailPage() {
                     <span>
                       <span className="font-medium">{formatMoneyFromCentavos(p.valorCentavos)}</span>{" "}
                       via {p.formaPagamento} — {formatDate(p.data)}
+                      {p.contaFinanceira && (
+                        <span className="text-slate-500"> · {p.contaFinanceira.nome}</span>
+                      )}
+                      {p.categoriaFinanceira && (
+                        <span className="text-slate-500"> · {p.categoriaFinanceira.nome}</span>
+                      )}
                       {p.observacao && <span className="text-slate-500"> ({p.observacao})</span>}
                       <span className="text-slate-400"> · lançado por {p.registradoPor.nome}</span>
                     </span>
@@ -358,51 +377,41 @@ export function OrdemDetailPage() {
               </ul>
             )}
 
-            <div className="grid grid-cols-3 gap-3">
-              <div className="space-y-1">
-                <Label>Valor (R$)</Label>
-                <Input
-                  value={novoPagamentoValor}
-                  onChange={(e) => setNovoPagamentoValor(e.target.value)}
-                />
-              </div>
-              <div className="space-y-1">
-                <FieldLabelWithAdd
-                  onAdd={() => setNovaFormaModalOpen(true)}
-                  addTitle="Cadastrar nova forma de pagamento"
-                >
-                  Forma de pagamento
-                </FieldLabelWithAdd>
-                <select
-                  value={novoPagamentoForma}
-                  onChange={(e) => setNovoPagamentoForma(e.target.value)}
-                  className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
-                >
-                  <option value="">Selecione...</option>
-                  {formasPagamento?.map((f) => (
-                    <option key={f.id} value={f.nome}>
-                      {f.nome}
-                    </option>
+            {os.parcelas && os.parcelas.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-sm font-medium text-slate-700">Parcelamento</p>
+                <ul className="space-y-2 text-sm">
+                  {os.parcelas.map((parcela) => (
+                    <li
+                      key={parcela.id}
+                      className="flex items-center justify-between border-b border-slate-100 pb-2"
+                    >
+                      <span>
+                        Parcela {parcela.numero} —{" "}
+                        <span className="font-medium">
+                          {formatMoneyFromCentavos(parcela.valorCentavos)}
+                        </span>{" "}
+                        venc. {formatDate(parcela.dataVencimento)}
+                        {parcela.formaPagamento && <span className="text-slate-500"> ({parcela.formaPagamento})</span>}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <ParcelaStatusBadge status={parcela.situacao} />
+                        {parcela.situacao !== "paga" && (
+                          <button
+                            onClick={() => abrirModalPagamento(parcela.id)}
+                            className="text-slate-600 hover:underline"
+                          >
+                            Registrar pagamento
+                          </button>
+                        )}
+                      </span>
+                    </li>
                   ))}
-                </select>
+                </ul>
               </div>
-              <div className="space-y-1">
-                <Label>Observação (opcional)</Label>
-                <Input
-                  value={novoPagamentoObs}
-                  onChange={(e) => setNovoPagamentoObs(e.target.value)}
-                />
-              </div>
-            </div>
-            <Button onClick={registrarNovoPagamento} disabled={registrarPagamento.isPending}>
-              {registrarPagamento.isPending ? "Registrando..." : "Registrar pagamento"}
-            </Button>
+            )}
 
-            <QuickAddFormaPagamentoModal
-              open={novaFormaModalOpen}
-              onClose={() => setNovaFormaModalOpen(false)}
-              onCreated={(novaForma) => setNovoPagamentoForma(novaForma.nome)}
-            />
+            <Button onClick={() => abrirModalPagamento()}>Registrar pagamento</Button>
           </CardContent>
         </Card>
       )}
@@ -452,6 +461,19 @@ export function OrdemDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      <RegistrarPagamentoModal
+        open={pagamentoModalOpen}
+        onClose={() => setPagamentoModalOpen(false)}
+        osId={os.id}
+        parcelaId={parcelaIdSelecionada}
+        clienteNome={os.cliente.nome}
+        saldoDevedorCentavos={
+          parcelaIdSelecionada
+            ? os.parcelas?.find((p) => p.id === parcelaIdSelecionada)?.valorCentavos
+            : os.saldoDevedorCentavos
+        }
+      />
     </div>
   );
 }

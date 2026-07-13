@@ -5,7 +5,11 @@ import { FieldLabelWithAdd } from "@/components/FieldLabelWithAdd";
 import { Modal } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { QuickAddCategoriaFinanceiraModal } from "@/components/QuickAddCategoriaFinanceiraModal";
+import { QuickAddContaFinanceiraModal } from "@/components/QuickAddContaFinanceiraModal";
 import { QuickAddFormaPagamentoModal } from "@/components/QuickAddFormaPagamentoModal";
+import { useCategoriasFinanceiras } from "@/features/categorias-financeiras/categoriasFinanceiras.api";
+import { useContasFinanceiras } from "@/features/contas-financeiras/contasFinanceiras.api";
 import { useRegistrarPagamento } from "@/features/financeiro/financeiro.api";
 import { useFormasPagamento } from "@/features/formas-pagamento/formasPagamento.api";
 import { formatMoneyFromCentavos } from "@/lib/utils";
@@ -19,6 +23,7 @@ interface RegistrarPagamentoModalProps {
   open: boolean;
   onClose: () => void;
   osId: number | null;
+  parcelaId?: number | null;
   clienteNome?: string;
   saldoDevedorCentavos?: number | null;
   onRegistrado?: () => void;
@@ -28,17 +33,24 @@ export function RegistrarPagamentoModal({
   open,
   onClose,
   osId,
+  parcelaId,
   clienteNome,
   saldoDevedorCentavos,
   onRegistrado,
 }: RegistrarPagamentoModalProps) {
   const [valor, setValor] = useState("");
   const [forma, setForma] = useState("");
+  const [contaFinanceiraId, setContaFinanceiraId] = useState("");
+  const [categoriaFinanceiraId, setCategoriaFinanceiraId] = useState("");
   const [observacao, setObservacao] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [novaFormaModalOpen, setNovaFormaModalOpen] = useState(false);
+  const [novaContaModalOpen, setNovaContaModalOpen] = useState(false);
+  const [novaCategoriaModalOpen, setNovaCategoriaModalOpen] = useState(false);
   const registrarPagamento = useRegistrarPagamento(osId ? String(osId) : "");
   const { data: formasPagamento } = useFormasPagamento();
+  const { data: contasFinanceiras } = useContasFinanceiras();
+  const { data: categoriasFinanceiras } = useCategoriasFinanceiras();
 
   useEffect(() => {
     if (open) {
@@ -53,6 +65,8 @@ export function RegistrarPagamentoModal({
   function fechar() {
     setValor("");
     setForma("");
+    setContaFinanceiraId("");
+    setCategoriaFinanceiraId("");
     setObservacao("");
     setError(null);
     onClose();
@@ -63,8 +77,8 @@ export function RegistrarPagamentoModal({
     setError(null);
 
     const valorCentavos = toCentavos(valor);
-    if (!valorCentavos || valorCentavos <= 0 || !forma) {
-      setError("Informe um valor válido e a forma de pagamento");
+    if (!valorCentavos || valorCentavos <= 0 || !forma || !contaFinanceiraId) {
+      setError("Informe um valor válido, a forma de pagamento e a conta financeira");
       return;
     }
 
@@ -72,7 +86,10 @@ export function RegistrarPagamentoModal({
       await registrarPagamento.mutateAsync({
         valorCentavos,
         formaPagamento: forma,
+        contaFinanceiraId: Number(contaFinanceiraId),
+        categoriaFinanceiraId: categoriaFinanceiraId ? Number(categoriaFinanceiraId) : undefined,
         observacao: observacao || undefined,
+        parcelaId: parcelaId ?? undefined,
       });
       toast.success("Pagamento registrado");
       onRegistrado?.();
@@ -122,6 +139,49 @@ export function RegistrarPagamentoModal({
           </div>
 
           <div className="space-y-1">
+            <FieldLabelWithAdd
+              required
+              onAdd={() => setNovaContaModalOpen(true)}
+              addTitle="Cadastrar nova conta financeira"
+            >
+              Conta financeira
+            </FieldLabelWithAdd>
+            <select
+              value={contaFinanceiraId}
+              onChange={(e) => setContaFinanceiraId(e.target.value)}
+              className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+            >
+              <option value="">Selecione...</option>
+              {contasFinanceiras?.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
+            <FieldLabelWithAdd
+              onAdd={() => setNovaCategoriaModalOpen(true)}
+              addTitle="Cadastrar nova categoria financeira"
+            >
+              Categoria (opcional)
+            </FieldLabelWithAdd>
+            <select
+              value={categoriaFinanceiraId}
+              onChange={(e) => setCategoriaFinanceiraId(e.target.value)}
+              className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+            >
+              <option value="">Sem categoria</option>
+              {categoriasFinanceiras?.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.nome}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="space-y-1">
             <Label>Observação</Label>
             <Input value={observacao} onChange={(e) => setObservacao(e.target.value)} />
           </div>
@@ -143,6 +203,16 @@ export function RegistrarPagamentoModal({
         open={novaFormaModalOpen}
         onClose={() => setNovaFormaModalOpen(false)}
         onCreated={(novaForma) => setForma(novaForma.nome)}
+      />
+      <QuickAddContaFinanceiraModal
+        open={novaContaModalOpen}
+        onClose={() => setNovaContaModalOpen(false)}
+        onCreated={(novaConta) => setContaFinanceiraId(String(novaConta.id))}
+      />
+      <QuickAddCategoriaFinanceiraModal
+        open={novaCategoriaModalOpen}
+        onClose={() => setNovaCategoriaModalOpen(false)}
+        onCreated={(novaCategoria) => setCategoriaFinanceiraId(String(novaCategoria.id))}
       />
     </>
   );

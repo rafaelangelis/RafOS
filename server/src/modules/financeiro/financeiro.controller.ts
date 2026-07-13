@@ -5,6 +5,14 @@ export async function contasAReceberHandler(req: Request, res: Response) {
   res.json(await financeiroService.listContasAReceber());
 }
 
+export async function parcelasEmAbertoHandler(req: Request, res: Response) {
+  res.json(await financeiroService.listParcelasEmAberto());
+}
+
+export async function saldoPorContaHandler(req: Request, res: Response) {
+  res.json(await financeiroService.listSaldoPorConta());
+}
+
 export async function recebidoHandler(req: Request, res: Response) {
   const { inicio, fim } = req.query as { inicio: string; fim: string };
   res.json(await financeiroService.getRecebidoPeriodo(inicio, fim));

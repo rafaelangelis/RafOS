@@ -1,5 +1,6 @@
 import { prisma } from "../../db/client";
 import { calcularSituacaoPagamento } from "../ordens-servico/pagamentos.util";
+import { calcularSituacaoParcela } from "../ordens-servico/parcelas.util";
 
 function inicioDoDia(dataStr: string) {
   return new Date(`${dataStr}T00:00:00.000`);
@@ -19,17 +20,49 @@ export async function listContasAReceber() {
       cliente: true,
       equipamento: true,
       pagamentos: true,
+      parcelas: true,
     },
     orderBy: { dataPrevisao: "asc" },
   });
 
   return ordens
+    .filter((os) => os.parcelas.length === 0)
     .map((os) => {
-      const { pagamentos, ...resto } = os;
+      const { pagamentos, parcelas, ...resto } = os;
       const situacao = calcularSituacaoPagamento(os.valorTotalCentavos, pagamentos);
       return { ...resto, ...situacao };
     })
     .filter((os) => (os.saldoDevedorCentavos ?? 0) > 0);
+}
+
+export async function listParcelasEmAberto() {
+  const parcelas = await prisma.parcela.findMany({
+    where: { pagamentoId: null },
+    include: {
+      os: { include: { cliente: true } },
+    },
+    orderBy: { dataVencimento: "asc" },
+  });
+
+  return parcelas.map((p) => ({
+    ...p,
+    situacao: calcularSituacaoParcela(p.dataVencimento, p.pagamentoId),
+  }));
+}
+
+export async function listSaldoPorConta() {
+  const contas = await prisma.contaFinanceira.findMany({ where: { ativo: true } });
+
+  const somas = await prisma.pagamento.groupBy({
+    by: ["contaFinanceiraId"],
+    _sum: { valorCentavos: true },
+  });
+
+  return contas.map((conta) => ({
+    conta,
+    saldoCentavos:
+      somas.find((s) => s.contaFinanceiraId === conta.id)?._sum.valorCentavos ?? 0,
+  }));
 }
 
 export async function getRecebidoPeriodo(inicio: string, fim: string) {

@@ -12,6 +12,12 @@ const statusEnum = z.enum([
   "cancelada",
 ]);
 
+const parcelaInputSchema = z.object({
+  dataVencimento: z.string().datetime(),
+  valorCentavos: z.number().int().positive(),
+  formaPagamento: z.string().optional(),
+});
+
 export const createOrdemSchema = z
   .object({
     clienteId: z.number().int(),
@@ -21,6 +27,8 @@ export const createOrdemSchema = z
     defeitoRelatado: z.string().min(1),
     dataPrevisao: z.string().datetime().optional(),
     observacoes: z.string().optional(),
+    valorOrcamentoCentavos: z.number().int().positive().optional(),
+    parcelas: z.array(parcelaInputSchema).optional(),
   })
   .refine((data) => data.equipamentoId || data.equipamentoNovo, {
     message: "Informe equipamentoId ou equipamentoNovo",
@@ -36,6 +44,8 @@ export const updateOrdemSchema = z.object({
   formaPagamento: z.string().optional(),
   dataPrevisao: z.string().datetime().optional(),
   observacoes: z.string().optional(),
+  garantiaDias: z.number().int().nonnegative().optional(),
+  garantiaObservacoes: z.string().optional(),
 });
 
 export const changeStatusSchema = z.object({

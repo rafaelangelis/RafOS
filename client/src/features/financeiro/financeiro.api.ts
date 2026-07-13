@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
-import type { OrdemServico } from "@/features/ordens/ordens.api";
+import type { ContaFinanceira } from "@/features/contas-financeiras/contasFinanceiras.api";
+import type { CategoriaFinanceira } from "@/features/categorias-financeiras/categoriasFinanceiras.api";
+import type { OrdemServico, Parcela } from "@/features/ordens/ordens.api";
 
 export interface Pagamento {
   id: number;
@@ -10,15 +12,29 @@ export interface Pagamento {
   data: string;
   observacao: string | null;
   registradoPor: { id: number; nome: string };
+  contaFinanceira: ContaFinanceira | null;
+  categoriaFinanceira: CategoriaFinanceira | null;
 }
 
 export interface PagamentoInput {
   valorCentavos: number;
   formaPagamento: string;
   observacao?: string;
+  contaFinanceiraId: number;
+  categoriaFinanceiraId?: number;
+  parcelaId?: number;
 }
 
 export type ContaReceber = OrdemServico;
+
+export interface ParcelaEmAberto extends Parcela {
+  os: { id: number; cliente: { nome: string } } & OrdemServico;
+}
+
+export interface SaldoPorConta {
+  conta: ContaFinanceira;
+  saldoCentavos: number;
+}
 
 export interface RecebidoPeriodo {
   totalCentavos: number;
@@ -79,6 +95,22 @@ export function useRecebidoPeriodo(inicio: string, fim: string) {
         })
       ).data,
     enabled: !!inicio && !!fim,
+  });
+}
+
+export function useParcelasEmAberto() {
+  return useQuery({
+    queryKey: ["financeiro", "parcelas-em-aberto"],
+    queryFn: async () =>
+      (await apiClient.get<ParcelaEmAberto[]>("/financeiro/parcelas-em-aberto")).data,
+  });
+}
+
+export function useSaldoPorConta() {
+  return useQuery({
+    queryKey: ["financeiro", "saldo-por-conta"],
+    queryFn: async () =>
+      (await apiClient.get<SaldoPorConta[]>("/financeiro/saldo-por-conta")).data,
   });
 }
 
