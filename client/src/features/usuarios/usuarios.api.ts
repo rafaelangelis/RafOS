@@ -26,6 +26,19 @@ export function useUsuarios() {
   });
 }
 
+export interface TecnicoOpcao {
+  id: number;
+  nome: string;
+}
+
+export function useTecnicos() {
+  return useQuery({
+    queryKey: ["usuarios", "tecnicos", "opcoes"],
+    queryFn: async () =>
+      (await apiClient.get<TecnicoOpcao[]>("/usuarios/tecnicos/opcoes")).data,
+  });
+}
+
 export function useUsuario(id?: string) {
   return useQuery({
     queryKey: ["usuarios", id],

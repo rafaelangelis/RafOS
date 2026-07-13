@@ -19,6 +19,14 @@ export function listUsuarios() {
   });
 }
 
+export function listTecnicos() {
+  return prisma.usuario.findMany({
+    where: { role: "tecnico", ativo: true },
+    select: { id: true, nome: true },
+    orderBy: { nome: "asc" },
+  });
+}
+
 export async function getUsuario(id: number) {
   const usuario = await prisma.usuario.findUnique({
     where: { id },

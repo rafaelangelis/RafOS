@@ -5,6 +5,10 @@ export async function listHandler(req: Request, res: Response) {
   res.json(await usuariosService.listUsuarios());
 }
 
+export async function listTecnicosHandler(req: Request, res: Response) {
+  res.json(await usuariosService.listTecnicos());
+}
+
 export async function getHandler(req: Request, res: Response) {
   res.json(await usuariosService.getUsuario(Number(req.params.id)));
 }

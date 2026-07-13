@@ -8,11 +8,14 @@ import {
   deactivateHandler,
   getHandler,
   listHandler,
+  listTecnicosHandler,
   updateHandler,
 } from "./usuarios.controller";
 import { createUsuarioSchema, updateUsuarioSchema } from "./usuarios.schema";
 
 export const usuariosRouter = Router();
+
+usuariosRouter.get("/tecnicos/opcoes", auth, asyncHandler(listTecnicosHandler));
 
 usuariosRouter.use(auth, requireRole("admin"));
 

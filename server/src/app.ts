@@ -3,6 +3,10 @@ import express from "express";
 import helmet from "helmet";
 import { errorHandler } from "./middleware/errorHandler";
 import { authRouter } from "./modules/auth/auth.routes";
+import { clientesRouter } from "./modules/clientes/clientes.routes";
+import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
+import { equipamentosRouter } from "./modules/equipamentos/equipamentos.routes";
+import { ordensRouter } from "./modules/ordens-servico/os.routes";
 import { usuariosRouter } from "./modules/usuarios/usuarios.routes";
 
 export const app = express();
@@ -13,6 +17,10 @@ app.use(express.json());
 
 app.use("/api/auth", authRouter);
 app.use("/api/usuarios", usuariosRouter);
+app.use("/api/clientes", clientesRouter);
+app.use("/api/equipamentos", equipamentosRouter);
+app.use("/api/ordens", ordensRouter);
+app.use("/api/dashboard", dashboardRouter);
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });
