@@ -5,8 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PagamentoStatusBadge } from "@/components/PagamentoStatusBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAuth } from "@/features/auth/AuthContext";
+import {
+  useDeletePagamento,
+  useOsPagamentos,
+  useRegistrarPagamento,
+} from "@/features/financeiro/financeiro.api";
 import {
   STATUS_LABELS,
   STATUS_TRANSICOES,
@@ -34,8 +40,11 @@ export function OrdemDetailPage() {
   const { data: os } = useOrdem(id);
   const { data: historico } = useOrdemHistorico(id);
   const { data: tecnicos } = useTecnicos();
+  const { data: pagamentos } = useOsPagamentos(id);
   const updateOrdem = useUpdateOrdem(id ?? "");
   const changeStatus = useChangeStatus(id ?? "");
+  const registrarPagamento = useRegistrarPagamento(id ?? "");
+  const deletePagamento = useDeletePagamento(id ?? "");
 
   const [diagnostico, setDiagnostico] = useState("");
   const [valorOrcamento, setValorOrcamento] = useState("");
@@ -45,6 +54,9 @@ export function OrdemDetailPage() {
   const [tecnicoResponsavelId, setTecnicoResponsavelId] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [observacaoStatus, setObservacaoStatus] = useState("");
+  const [novoPagamentoValor, setNovoPagamentoValor] = useState("");
+  const [novoPagamentoForma, setNovoPagamentoForma] = useState("");
+  const [novoPagamentoObs, setNovoPagamentoObs] = useState("");
 
   useEffect(() => {
     if (os) {
@@ -62,6 +74,8 @@ export function OrdemDetailPage() {
 
   const podeEditar = hasRole("admin", "tecnico", "atendente");
   const podeMudarStatus = hasRole("admin", "tecnico");
+  const podeVerFinanceiro = hasRole("admin", "atendente");
+  const podeExcluirPagamento = hasRole("admin");
   const proximosStatus = STATUS_TRANSICOES[os.status];
 
   async function salvar() {
@@ -94,7 +108,40 @@ export function OrdemDetailPage() {
     }
   }
 
+  async function registrarNovoPagamento() {
+    const valorCentavos = toCentavos(novoPagamentoValor);
+    if (!valorCentavos || valorCentavos <= 0 || !novoPagamentoForma) {
+      toast.error("Informe um valor válido e a forma de pagamento");
+      return;
+    }
+
+    try {
+      await registrarPagamento.mutateAsync({
+        valorCentavos,
+        formaPagamento: novoPagamentoForma,
+        observacao: novoPagamentoObs || undefined,
+      });
+      setNovoPagamentoValor("");
+      setNovoPagamentoForma("");
+      setNovoPagamentoObs("");
+      toast.success("Pagamento registrado");
+    } catch {
+      toast.error("Não foi possível registrar o pagamento");
+    }
+  }
+
+  async function excluirPagamento(pagamentoId: number) {
+    try {
+      await deletePagamento.mutateAsync(pagamentoId);
+      toast.success("Pagamento removido");
+    } catch {
+      toast.error("Não foi possível remover o pagamento");
+    }
+  }
+
   async function copiarMensagemWhatsapp() {
+    if (!os) return;
+
     const mensagem =
       `Olá, ${os.cliente.nome}! Sua OS #${os.id} (${os.equipamento.marca} ${os.equipamento.modelo}) ` +
       `está com status: ${STATUS_LABELS[os.status]}.` +
@@ -246,6 +293,84 @@ export function OrdemDetailPage() {
           )}
         </CardContent>
       </Card>
+
+      {podeVerFinanceiro && (
+        <Card>
+          <CardHeader className="flex items-center justify-between font-semibold text-slate-900">
+            <span>Pagamentos</span>
+            {os.statusPagamento && <PagamentoStatusBadge status={os.statusPagamento} />}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-3 gap-4 text-sm">
+              <div>
+                <p className="text-slate-500">Valor total</p>
+                <p className="font-medium text-slate-900">
+                  {formatMoneyFromCentavos(os.valorTotalCentavos)}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-500">Pago</p>
+                <p className="font-medium text-slate-900">
+                  {formatMoneyFromCentavos(os.valorPagoCentavos ?? 0)}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-500">Saldo devedor</p>
+                <p className="font-medium text-slate-900">
+                  {formatMoneyFromCentavos(os.saldoDevedorCentavos)}
+                </p>
+              </div>
+            </div>
+
+            {pagamentos && pagamentos.length > 0 && (
+              <ul className="space-y-2 text-sm">
+                {pagamentos.map((p) => (
+                  <li
+                    key={p.id}
+                    className="flex items-center justify-between border-b border-slate-100 pb-2"
+                  >
+                    <span>
+                      <span className="font-medium">{formatMoneyFromCentavos(p.valorCentavos)}</span>{" "}
+                      via {p.formaPagamento} — {formatDate(p.data)}
+                      {p.observacao && <span className="text-slate-500"> ({p.observacao})</span>}
+                      <span className="text-slate-400"> · lançado por {p.registradoPor.nome}</span>
+                    </span>
+                    {podeExcluirPagamento && (
+                      <button
+                        onClick={() => excluirPagamento(p.id)}
+                        className="text-red-600 hover:underline"
+                      >
+                        Remover
+                      </button>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            <div className="grid grid-cols-3 gap-3">
+              <Input
+                placeholder="Valor (R$)"
+                value={novoPagamentoValor}
+                onChange={(e) => setNovoPagamentoValor(e.target.value)}
+              />
+              <Input
+                placeholder="Forma de pagamento"
+                value={novoPagamentoForma}
+                onChange={(e) => setNovoPagamentoForma(e.target.value)}
+              />
+              <Input
+                placeholder="Observação (opcional)"
+                value={novoPagamentoObs}
+                onChange={(e) => setNovoPagamentoObs(e.target.value)}
+              />
+            </div>
+            <Button onClick={registrarNovoPagamento} disabled={registrarPagamento.isPending}>
+              {registrarPagamento.isPending ? "Registrando..." : "Registrar pagamento"}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {podeMudarStatus && proximosStatus.length > 0 && (
         <Card>

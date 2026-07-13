@@ -18,6 +18,12 @@ import {
   listOrdensQuerySchema,
   updateOrdemSchema,
 } from "./os.schema";
+import {
+  createHandler as createPagamentoHandler,
+  deleteHandler as deletePagamentoHandler,
+  listHandler as listPagamentosHandler,
+} from "./pagamentos.controller";
+import { criarPagamentoSchema } from "./pagamentos.schema";
 
 export const ordensRouter = Router();
 
@@ -45,3 +51,16 @@ ordensRouter.patch(
   asyncHandler(changeStatusHandler)
 );
 ordensRouter.delete("/:id", requireRole("admin"), asyncHandler(deleteHandler));
+
+ordensRouter.get("/:id/pagamentos", asyncHandler(listPagamentosHandler));
+ordensRouter.post(
+  "/:id/pagamentos",
+  requireRole("admin", "atendente"),
+  validate({ body: criarPagamentoSchema }),
+  asyncHandler(createPagamentoHandler)
+);
+ordensRouter.delete(
+  "/:id/pagamentos/:pagamentoId",
+  requireRole("admin"),
+  asyncHandler(deletePagamentoHandler)
+);

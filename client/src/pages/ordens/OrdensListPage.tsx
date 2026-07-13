@@ -29,8 +29,8 @@ export function OrdensListPage() {
     [ordens, page]
   );
 
-  function updateFilter(setter: (v: string) => void) {
-    return (value: string) => {
+  function updateFilter<T>(setter: (v: T) => void) {
+    return (value: T) => {
       setter(value);
       setPage(1);
     };
@@ -48,7 +48,7 @@ export function OrdensListPage() {
       <div className="mb-4 flex flex-wrap gap-3">
         <select
           value={status}
-          onChange={(e) => updateFilter(setStatus)(e.target.value)}
+          onChange={(e) => updateFilter(setStatus)(e.target.value as StatusOS | "")}
           className="h-9 rounded-md border border-slate-300 bg-white px-3 text-sm"
         >
           <option value="">Todos os status</option>

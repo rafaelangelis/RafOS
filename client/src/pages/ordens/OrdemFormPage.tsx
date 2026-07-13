@@ -1,19 +1,28 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { ClienteSearchSelect } from "@/components/ClienteSearchSelect";
+import { EquipamentoSearchSelect } from "@/components/EquipamentoSearchSelect";
+import { FieldLabelWithAdd } from "@/components/FieldLabelWithAdd";
+import { QuickAddClienteModal } from "@/components/QuickAddClienteModal";
+import { QuickAddTecnicoModal } from "@/components/QuickAddTecnicoModal";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useClienteEquipamentos, useClientes } from "@/features/clientes/clientes.api";
+import { useAuth } from "@/features/auth/AuthContext";
+import { useClienteEquipamentos, type Cliente } from "@/features/clientes/clientes.api";
 import { useCreateOrdem } from "@/features/ordens/ordens.api";
 import { useTecnicos } from "@/features/usuarios/usuarios.api";
 
 export function OrdemFormPage() {
   const navigate = useNavigate();
-  const { data: clientes } = useClientes();
+  const { hasRole } = useAuth();
   const { data: tecnicos } = useTecnicos();
   const createOrdem = useCreateOrdem();
 
   const [clienteId, setClienteId] = useState("");
+  const [clienteRecemCriado, setClienteRecemCriado] = useState<Cliente | null>(null);
+  const [clienteModalOpen, setClienteModalOpen] = useState(false);
+  const [tecnicoModalOpen, setTecnicoModalOpen] = useState(false);
   const [equipamentoId, setEquipamentoId] = useState("");
   const [novoEquipamento, setNovoEquipamento] = useState(false);
   const [tipo, setTipo] = useState("");
@@ -28,7 +37,9 @@ export function OrdemFormPage() {
   const [observacoes, setObservacoes] = useState("");
   const [error, setError] = useState<string | null>(null);
 
-  const { data: equipamentos } = useClienteEquipamentos(clienteId || undefined);
+  const { data: equipamentos, isLoading: carregandoEquipamentos } = useClienteEquipamentos(
+    clienteId || undefined
+  );
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -42,8 +53,8 @@ export function OrdemFormPage() {
       setError("Selecione um equipamento ou cadastre um novo");
       return;
     }
-    if (novoEquipamento && (!tipo || !marca || !modelo)) {
-      setError("Preencha tipo, marca e modelo do equipamento");
+    if (novoEquipamento && !tipo) {
+      setError("Preencha o tipo do equipamento");
       return;
     }
 
@@ -54,8 +65,8 @@ export function OrdemFormPage() {
         equipamentoNovo: novoEquipamento
           ? {
               tipo,
-              marca,
-              modelo,
+              marca: marca || undefined,
+              modelo: modelo || undefined,
               numeroSerie: numeroSerie || undefined,
               senhaAcesso: senhaAcesso || undefined,
               acessorios: acessorios || undefined,
@@ -78,59 +89,56 @@ export function OrdemFormPage() {
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1">
-          <Label htmlFor="cliente">Cliente</Label>
-          <select
-            id="cliente"
-            value={clienteId}
-            onChange={(e) => {
-              setClienteId(e.target.value);
+          <FieldLabelWithAdd
+            required
+            onAdd={() => setClienteModalOpen(true)}
+            addTitle="Cadastrar novo cliente"
+          >
+            Cliente
+          </FieldLabelWithAdd>
+          <ClienteSearchSelect
+            preSelecionado={clienteRecemCriado}
+            onSelect={(cliente) => {
+              setClienteId(cliente ? String(cliente.id) : "");
               setEquipamentoId("");
             }}
-            className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
-          >
-            <option value="">Selecione...</option>
-            {clientes?.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.nome} — {c.telefone}
-              </option>
-            ))}
-          </select>
+          />
         </div>
 
         {clienteId && (
           <div className="space-y-2 rounded-md border border-slate-200 p-3">
             {!novoEquipamento && (
               <div className="space-y-1">
-                <Label htmlFor="equipamento">Equipamento</Label>
-                <select
-                  id="equipamento"
-                  value={equipamentoId}
-                  onChange={(e) => setEquipamentoId(e.target.value)}
-                  className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+                <FieldLabelWithAdd
+                  required
+                  onAdd={() => setNovoEquipamento(true)}
+                  addTitle="Cadastrar novo equipamento"
                 >
-                  <option value="">Selecione...</option>
-                  {equipamentos?.map(
-                    (eq: { id: number; tipo: string; marca: string; modelo: string }) => (
-                      <option key={eq.id} value={eq.id}>
-                        {eq.tipo} — {eq.marca} {eq.modelo}
-                      </option>
-                    )
-                  )}
-                </select>
+                  Equipamento
+                </FieldLabelWithAdd>
+                <EquipamentoSearchSelect
+                  key={clienteId}
+                  equipamentos={equipamentos}
+                  loading={carregandoEquipamentos}
+                  onSelect={(equipamento) => setEquipamentoId(equipamento ? String(equipamento.id) : "")}
+                />
               </div>
             )}
-            <button
-              type="button"
-              onClick={() => setNovoEquipamento((v) => !v)}
-              className="text-sm text-slate-600 hover:underline"
-            >
-              {novoEquipamento ? "Usar equipamento existente" : "+ Cadastrar novo equipamento"}
-            </button>
+
+            {novoEquipamento && (
+              <button
+                type="button"
+                onClick={() => setNovoEquipamento(false)}
+                className="text-sm text-slate-600 hover:underline"
+              >
+                Usar equipamento existente
+              </button>
+            )}
 
             {novoEquipamento && (
               <div className="grid grid-cols-2 gap-3 pt-2">
                 <div className="space-y-1">
-                  <Label htmlFor="tipo">Tipo</Label>
+                  <Label htmlFor="tipo" required>Tipo</Label>
                   <Input id="tipo" value={tipo} onChange={(e) => setTipo(e.target.value)} placeholder="celular, notebook..." />
                 </div>
                 <div className="space-y-1">
@@ -159,7 +167,7 @@ export function OrdemFormPage() {
         )}
 
         <div className="space-y-1">
-          <Label htmlFor="defeito">Defeito relatado</Label>
+          <Label htmlFor="defeito" required>Defeito relatado</Label>
           <Input
             id="defeito"
             value={defeitoRelatado}
@@ -170,7 +178,13 @@ export function OrdemFormPage() {
 
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
-            <Label htmlFor="tecnico">Técnico responsável</Label>
+            {hasRole("admin") ? (
+              <FieldLabelWithAdd onAdd={() => setTecnicoModalOpen(true)} addTitle="Cadastrar novo técnico">
+                Técnico responsável
+              </FieldLabelWithAdd>
+            ) : (
+              <Label htmlFor="tecnico">Técnico responsável</Label>
+            )}
             <select
               id="tecnico"
               value={tecnicoResponsavelId}
@@ -207,6 +221,22 @@ export function OrdemFormPage() {
           {createOrdem.isPending ? "Criando..." : "Abrir OS"}
         </Button>
       </form>
+
+      <QuickAddClienteModal
+        open={clienteModalOpen}
+        onClose={() => setClienteModalOpen(false)}
+        onCreated={(cliente) => {
+          setClienteId(String(cliente.id));
+          setEquipamentoId("");
+          setClienteRecemCriado(cliente);
+        }}
+      />
+
+      <QuickAddTecnicoModal
+        open={tecnicoModalOpen}
+        onClose={() => setTecnicoModalOpen(false)}
+        onCreated={(tecnico) => setTecnicoResponsavelId(String(tecnico.id))}
+      />
     </div>
   );
 }

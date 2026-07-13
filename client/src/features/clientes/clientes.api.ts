@@ -21,6 +21,17 @@ export interface ClienteInput {
   observacoes?: string;
 }
 
+export interface Equipamento {
+  id: number;
+  clienteId: number;
+  tipo: string;
+  marca: string;
+  modelo: string;
+  numeroSerie: string | null;
+  senhaAcesso: string | null;
+  acessorios: string | null;
+}
+
 export function useClientes(q?: string) {
   return useQuery({
     queryKey: ["clientes", q],
@@ -41,7 +52,7 @@ export function useClienteEquipamentos(id?: string) {
   return useQuery({
     queryKey: ["clientes", id, "equipamentos"],
     queryFn: async () =>
-      (await apiClient.get(`/clientes/${id}/equipamentos`)).data,
+      (await apiClient.get<Equipamento[]>(`/clientes/${id}/equipamentos`)).data,
     enabled: !!id,
   });
 }

@@ -1,4 +1,4 @@
-import { LayoutDashboard, LogOut, Users, UserCog, Wrench } from "lucide-react";
+import { DollarSign, LayoutDashboard, LogOut, Users, UserCog, Wrench } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "@/features/auth/AuthContext";
 import { cn } from "@/lib/utils";
@@ -7,6 +7,12 @@ const navItems = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, roles: undefined },
   { to: "/clientes", label: "Clientes", icon: Users, roles: undefined },
   { to: "/ordens", label: "Ordens de Serviço", icon: Wrench, roles: undefined },
+  {
+    to: "/financeiro",
+    label: "Financeiro",
+    icon: DollarSign,
+    roles: ["admin", "atendente"] as const,
+  },
   { to: "/usuarios", label: "Usuários", icon: UserCog, roles: ["admin"] as const },
 ];
 

@@ -17,7 +17,7 @@ export async function listHandler(req: Request, res: Response) {
 }
 
 export async function getHandler(req: Request, res: Response) {
-  res.json(await osService.getOrdem(Number(req.params.id)));
+  res.json(await osService.getOrdemComSituacao(Number(req.params.id)));
 }
 
 export async function historicoHandler(req: Request, res: Response) {

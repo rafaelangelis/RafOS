@@ -4,6 +4,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ClienteFormPage } from "@/pages/clientes/ClienteFormPage";
 import { ClientesListPage } from "@/pages/clientes/ClientesListPage";
 import { DashboardPage } from "@/pages/DashboardPage";
+import { FinanceiroPage } from "@/pages/financeiro/FinanceiroPage";
 import { LoginPage } from "@/pages/LoginPage";
 import { OrdemDetailPage } from "@/pages/ordens/OrdemDetailPage";
 import { OrdemFormPage } from "@/pages/ordens/OrdemFormPage";
@@ -28,6 +29,10 @@ export const router = createBrowserRouter([
           { path: "/ordens", element: <OrdensListPage /> },
           { path: "/ordens/nova", element: <OrdemFormPage /> },
           { path: "/ordens/:id", element: <OrdemDetailPage /> },
+          {
+            element: <ProtectedRoute roles={["admin", "atendente"]} />,
+            children: [{ path: "/financeiro", element: <FinanceiroPage /> }],
+          },
           {
             element: <ProtectedRoute roles={["admin"]} />,
             children: [

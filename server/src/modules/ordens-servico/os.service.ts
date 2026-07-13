@@ -6,6 +6,7 @@ import {
   CreateOrdemInput,
   UpdateOrdemInput,
 } from "./os.schema";
+import { calcularSituacaoPagamento } from "./pagamentos.util";
 
 const includeCompleto = {
   cliente: true,
@@ -42,6 +43,13 @@ export async function getOrdem(id: number) {
   return os;
 }
 
+export async function getOrdemComSituacao(id: number) {
+  const os = await getOrdem(id);
+  const pagamentos = await prisma.pagamento.findMany({ where: { osId: id } });
+  const situacao = calcularSituacaoPagamento(os.valorTotalCentavos, pagamentos);
+  return { ...os, ...situacao };
+}
+
 export async function getHistorico(id: number) {
   await getOrdem(id);
   return prisma.historicoStatus.findMany({
@@ -65,7 +73,12 @@ export async function createOrdem(input: CreateOrdemInput, usuarioId: number) {
     }
   } else if (input.equipamentoNovo) {
     const equipamento = await prisma.equipamento.create({
-      data: { clienteId: input.clienteId, ...input.equipamentoNovo },
+      data: {
+        clienteId: input.clienteId,
+        ...input.equipamentoNovo,
+        marca: input.equipamentoNovo.marca ?? "",
+        modelo: input.equipamentoNovo.modelo ?? "",
+      },
     });
     equipamentoId = equipamento.id;
   }

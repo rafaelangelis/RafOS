@@ -17,7 +17,7 @@ export function auth(req: Request, res: Response, next: NextFunction) {
   const token = header.slice("Bearer ".length);
 
   try {
-    const payload = jwt.verify(token, env.JWT_SECRET) as JwtPayload;
+    const payload = jwt.verify(token, env.JWT_SECRET) as unknown as JwtPayload;
     req.user = { id: payload.sub, role: payload.role };
     next();
   } catch {

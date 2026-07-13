@@ -1,8 +1,15 @@
 import type { LabelHTMLAttributes } from "react";
 import { cn } from "@/lib/utils";
 
-export function Label({ className, ...props }: LabelHTMLAttributes<HTMLLabelElement>) {
+interface LabelProps extends LabelHTMLAttributes<HTMLLabelElement> {
+  required?: boolean;
+}
+
+export function Label({ className, required, children, ...props }: LabelProps) {
   return (
-    <label className={cn("text-sm font-medium text-slate-700", className)} {...props} />
+    <label className={cn("text-sm font-medium text-slate-700", className)} {...props}>
+      {children}
+      {required && <span className="ml-0.5 text-red-600">*</span>}
+    </label>
   );
 }

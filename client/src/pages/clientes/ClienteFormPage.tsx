@@ -76,12 +76,12 @@ export function ClienteFormPage() {
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-1">
-            <Label htmlFor="nome">Nome</Label>
+            <Label htmlFor="nome" required>Nome</Label>
             <Input id="nome" {...register("nome")} />
             {errors.nome && <p className="text-xs text-red-600">{errors.nome.message}</p>}
           </div>
           <div className="space-y-1">
-            <Label htmlFor="telefone">Telefone</Label>
+            <Label htmlFor="telefone" required>Telefone</Label>
             <Input id="telefone" {...register("telefone")} />
             {errors.telefone && <p className="text-xs text-red-600">{errors.telefone.message}</p>}
           </div>

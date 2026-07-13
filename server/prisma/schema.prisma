@@ -33,8 +33,9 @@ model Usuario {
   ativo     Boolean  @default(true)
   criadoEm  DateTime @default(now()) @map("criado_em")
 
-  ordensComoTecnico OrdemServico[]    @relation("TecnicoResponsavel")
-  historicos        HistoricoStatus[]
+  ordensComoTecnico     OrdemServico[]    @relation("TecnicoResponsavel")
+  historicos            HistoricoStatus[]
+  pagamentosRegistrados Pagamento[]
 
   @@map("usuarios")
 }
@@ -95,6 +96,7 @@ model OrdemServico {
   equipamento        Equipamento       @relation(fields: [equipamentoId], references: [id])
   tecnicoResponsavel Usuario?          @relation("TecnicoResponsavel", fields: [tecnicoResponsavelId], references: [id])
   historico          HistoricoStatus[]
+  pagamentos         Pagamento[]
 
   @@map("ordens_servico")
 }
@@ -112,4 +114,19 @@ model HistoricoStatus {
   usuario Usuario      @relation(fields: [usuarioId], references: [id])
 
   @@map("historico_status")
+}
+
+model Pagamento {
+  id              Int      @id @default(autoincrement())
+  osId            Int      @map("os_id")
+  valorCentavos   Int      @map("valor_centavos")
+  formaPagamento  String   @map("forma_pagamento")
+  data            DateTime @default(now())
+  observacao      String?
+  registradoPorId Int      @map("registrado_por_id")
+
+  os            OrdemServico @relation(fields: [osId], references: [id])
+  registradoPor Usuario      @relation(fields: [registradoPorId], references: [id])
+
+  @@map("pagamentos")
 }

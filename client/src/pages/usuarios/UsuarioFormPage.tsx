@@ -64,25 +64,27 @@ export function UsuarioFormPage() {
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         <div className="space-y-1">
-          <Label htmlFor="nome">Nome</Label>
+          <Label htmlFor="nome" required>Nome</Label>
           <Input id="nome" {...register("nome")} />
           {errors.nome && <p className="text-xs text-red-600">{errors.nome.message}</p>}
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email" required>Email</Label>
           <Input id="email" type="email" {...register("email")} />
           {errors.email && <p className="text-xs text-red-600">{errors.email.message}</p>}
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="senha">{isEdit ? "Nova senha (opcional)" : "Senha"}</Label>
+          <Label htmlFor="senha" required={!isEdit}>
+            {isEdit ? "Nova senha (opcional)" : "Senha"}
+          </Label>
           <Input id="senha" type="password" {...register("senha")} />
           {errors.senha && <p className="text-xs text-red-600">{errors.senha.message}</p>}
         </div>
 
         <div className="space-y-1">
-          <Label htmlFor="role">Papel</Label>
+          <Label htmlFor="role" required>Papel</Label>
           <select
             id="role"
             {...register("role")}

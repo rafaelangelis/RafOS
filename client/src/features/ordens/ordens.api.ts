@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api-client";
-import type { Cliente } from "@/features/clientes/clientes.api";
+import type { Cliente, Equipamento } from "@/features/clientes/clientes.api";
+
+export type { Equipamento };
 
 export type StatusOS =
   | "aberta"
@@ -34,17 +36,6 @@ export const STATUS_LABELS: Record<StatusOS, string> = {
   cancelada: "Cancelada",
 };
 
-export interface Equipamento {
-  id: number;
-  clienteId: number;
-  tipo: string;
-  marca: string;
-  modelo: string;
-  numeroSerie: string | null;
-  senhaAcesso: string | null;
-  acessorios: string | null;
-}
-
 export interface TecnicoResumo {
   id: number;
   nome: string;
@@ -73,7 +64,12 @@ export interface OrdemServico {
   cliente: Cliente;
   equipamento: Equipamento;
   tecnicoResponsavel: TecnicoResumo | null;
+  valorPagoCentavos?: number;
+  saldoDevedorCentavos?: number | null;
+  statusPagamento?: StatusPagamento;
 }
+
+export type StatusPagamento = "sem_valor" | "pendente" | "parcial" | "pago";
 
 export interface HistoricoStatusItem {
   id: number;
@@ -90,8 +86,8 @@ export interface CreateOrdemInput {
   equipamentoId?: number;
   equipamentoNovo?: {
     tipo: string;
-    marca: string;
-    modelo: string;
+    marca?: string;
+    modelo?: string;
     numeroSerie?: string;
     senhaAcesso?: string;
     acessorios?: string;
