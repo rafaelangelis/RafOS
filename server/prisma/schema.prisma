@@ -1,0 +1,115 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  admin
+  tecnico
+  atendente
+}
+
+enum StatusOS {
+  aberta
+  em_analise
+  aguardando_aprovacao
+  aguardando_peca
+  em_conserto
+  pronta
+  entregue
+  cancelada
+}
+
+model Usuario {
+  id        Int      @id @default(autoincrement())
+  nome      String
+  email     String   @unique
+  senhaHash String   @map("senha_hash")
+  role      Role
+  ativo     Boolean  @default(true)
+  criadoEm  DateTime @default(now()) @map("criado_em")
+
+  ordensComoTecnico OrdemServico[]    @relation("TecnicoResponsavel")
+  historicos        HistoricoStatus[]
+
+  @@map("usuarios")
+}
+
+model Cliente {
+  id          Int      @id @default(autoincrement())
+  nome        String
+  telefone    String
+  email       String?
+  endereco    String?
+  cpfCnpj     String?  @map("cpf_cnpj")
+  observacoes String?
+  criadoEm    DateTime @default(now()) @map("criado_em")
+
+  equipamentos Equipamento[]
+  ordens       OrdemServico[]
+
+  @@map("clientes")
+}
+
+model Equipamento {
+  id          Int      @id @default(autoincrement())
+  clienteId   Int      @map("cliente_id")
+  tipo        String
+  marca       String
+  modelo      String
+  numeroSerie String?  @map("numero_serie")
+  senhaAcesso String?  @map("senha_acesso")
+  acessorios  String?
+  criadoEm    DateTime @default(now()) @map("criado_em")
+
+  cliente Cliente        @relation(fields: [clienteId], references: [id])
+  ordens  OrdemServico[]
+
+  @@map("equipamentos")
+}
+
+model OrdemServico {
+  id                   Int       @id @default(autoincrement())
+  clienteId            Int       @map("cliente_id")
+  equipamentoId        Int       @map("equipamento_id")
+  tecnicoResponsavelId Int?      @map("tecnico_responsavel_id")
+  defeitoRelatado      String    @map("defeito_relatado")
+  diagnostico          String?
+  status               StatusOS  @default(aberta)
+  valorOrcamentoCentavos Int?    @map("valor_orcamento_centavos")
+  valorPecasCentavos     Int?    @map("valor_pecas_centavos")
+  valorMaoObraCentavos   Int?    @map("valor_mao_obra_centavos")
+  valorTotalCentavos     Int?    @map("valor_total_centavos")
+  formaPagamento       String?   @map("forma_pagamento")
+  dataAbertura         DateTime  @default(now()) @map("data_abertura")
+  dataPrevisao         DateTime? @map("data_previsao")
+  dataConclusao        DateTime? @map("data_conclusao")
+  dataEntrega          DateTime? @map("data_entrega")
+  observacoes          String?
+
+  cliente            Cliente           @relation(fields: [clienteId], references: [id])
+  equipamento        Equipamento       @relation(fields: [equipamentoId], references: [id])
+  tecnicoResponsavel Usuario?          @relation("TecnicoResponsavel", fields: [tecnicoResponsavelId], references: [id])
+  historico          HistoricoStatus[]
+
+  @@map("ordens_servico")
+}
+
+model HistoricoStatus {
+  id             Int       @id @default(autoincrement())
+  osId           Int       @map("os_id")
+  statusAnterior StatusOS? @map("status_anterior")
+  statusNovo     StatusOS  @map("status_novo")
+  usuarioId      Int       @map("usuario_id")
+  data           DateTime  @default(now())
+  observacao     String?
+
+  os      OrdemServico @relation(fields: [osId], references: [id])
+  usuario Usuario      @relation(fields: [usuarioId], references: [id])
+
+  @@map("historico_status")
+}
