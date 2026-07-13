@@ -5,9 +5,11 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PagamentoStatusBadge } from "@/components/PagamentoStatusBadge";
+import { RegistrarPagamentoModal } from "@/components/RegistrarPagamentoModal";
 import {
   baixarCsv,
   useContasAReceber,
+  type ContaReceber,
   useRecebidoPeriodo,
 } from "@/features/financeiro/financeiro.api";
 import { formatDate, formatMoneyFromCentavos } from "@/lib/utils";
@@ -28,6 +30,8 @@ export function FinanceiroPage() {
 
   const { data: contasAReceber, isLoading: carregandoContas } = useContasAReceber();
   const { data: recebido, isLoading: carregandoRecebido } = useRecebidoPeriodo(inicio, fim);
+
+  const [osSelecionada, setOsSelecionada] = useState<ContaReceber | null>(null);
 
   const totalAReceberCentavos = (contasAReceber ?? []).reduce(
     (acc, os) => acc + (os.saldoDevedorCentavos ?? 0),
@@ -136,6 +140,12 @@ export function FinanceiroPage() {
                     </td>
                     <td className="py-2">{formatDate(os.dataPrevisao)}</td>
                     <td className="py-2 text-right">
+                      <button
+                        onClick={() => setOsSelecionada(os)}
+                        className="mr-3 text-slate-600 hover:underline"
+                      >
+                        Registrar pagamento
+                      </button>
                       <Link to={`/ordens/${os.id}`} className="text-slate-600 hover:underline">
                         Ver
                       </Link>
@@ -147,6 +157,14 @@ export function FinanceiroPage() {
           )}
         </CardContent>
       </Card>
+
+      <RegistrarPagamentoModal
+        open={!!osSelecionada}
+        onClose={() => setOsSelecionada(null)}
+        osId={osSelecionada?.id ?? null}
+        clienteNome={osSelecionada?.cliente.nome}
+        saldoDevedorCentavos={osSelecionada?.saldoDevedorCentavos}
+      />
     </div>
   );
 }

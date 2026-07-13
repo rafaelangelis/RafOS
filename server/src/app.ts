@@ -7,6 +7,7 @@ import { clientesRouter } from "./modules/clientes/clientes.routes";
 import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
 import { equipamentosRouter } from "./modules/equipamentos/equipamentos.routes";
 import { financeiroRouter } from "./modules/financeiro/financeiro.routes";
+import { formasPagamentoRouter } from "./modules/formas-pagamento/formasPagamento.routes";
 import { ordensRouter } from "./modules/ordens-servico/os.routes";
 import { usuariosRouter } from "./modules/usuarios/usuarios.routes";
 
@@ -23,6 +24,7 @@ app.use("/api/equipamentos", equipamentosRouter);
 app.use("/api/ordens", ordensRouter);
 app.use("/api/dashboard", dashboardRouter);
 app.use("/api/financeiro", financeiroRouter);
+app.use("/api/formas-pagamento", formasPagamentoRouter);
 
 app.get("/api/health", (req, res) => {
   res.json({ status: "ok" });

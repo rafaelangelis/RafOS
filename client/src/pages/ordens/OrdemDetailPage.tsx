@@ -3,9 +3,11 @@ import { Link, useParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { FieldLabelWithAdd } from "@/components/FieldLabelWithAdd";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PagamentoStatusBadge } from "@/components/PagamentoStatusBadge";
+import { QuickAddFormaPagamentoModal } from "@/components/QuickAddFormaPagamentoModal";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAuth } from "@/features/auth/AuthContext";
 import {
@@ -13,6 +15,7 @@ import {
   useOsPagamentos,
   useRegistrarPagamento,
 } from "@/features/financeiro/financeiro.api";
+import { useFormasPagamento } from "@/features/formas-pagamento/formasPagamento.api";
 import {
   STATUS_LABELS,
   STATUS_TRANSICOES,
@@ -41,6 +44,7 @@ export function OrdemDetailPage() {
   const { data: historico } = useOrdemHistorico(id);
   const { data: tecnicos } = useTecnicos();
   const { data: pagamentos } = useOsPagamentos(id);
+  const { data: formasPagamento } = useFormasPagamento();
   const updateOrdem = useUpdateOrdem(id ?? "");
   const changeStatus = useChangeStatus(id ?? "");
   const registrarPagamento = useRegistrarPagamento(id ?? "");
@@ -57,6 +61,7 @@ export function OrdemDetailPage() {
   const [novoPagamentoValor, setNovoPagamentoValor] = useState("");
   const [novoPagamentoForma, setNovoPagamentoForma] = useState("");
   const [novoPagamentoObs, setNovoPagamentoObs] = useState("");
+  const [novaFormaModalOpen, setNovaFormaModalOpen] = useState(false);
 
   useEffect(() => {
     if (os) {
@@ -67,6 +72,11 @@ export function OrdemDetailPage() {
       setFormaPagamento(os.formaPagamento ?? "");
       setTecnicoResponsavelId(os.tecnicoResponsavelId ? String(os.tecnicoResponsavelId) : "");
       setObservacoes(os.observacoes ?? "");
+      setNovoPagamentoValor(
+        os.saldoDevedorCentavos && os.saldoDevedorCentavos > 0
+          ? (os.saldoDevedorCentavos / 100).toFixed(2)
+          : ""
+      );
     }
   }, [os]);
 
@@ -349,25 +359,50 @@ export function OrdemDetailPage() {
             )}
 
             <div className="grid grid-cols-3 gap-3">
-              <Input
-                placeholder="Valor (R$)"
-                value={novoPagamentoValor}
-                onChange={(e) => setNovoPagamentoValor(e.target.value)}
-              />
-              <Input
-                placeholder="Forma de pagamento"
-                value={novoPagamentoForma}
-                onChange={(e) => setNovoPagamentoForma(e.target.value)}
-              />
-              <Input
-                placeholder="Observação (opcional)"
-                value={novoPagamentoObs}
-                onChange={(e) => setNovoPagamentoObs(e.target.value)}
-              />
+              <div className="space-y-1">
+                <Label>Valor (R$)</Label>
+                <Input
+                  value={novoPagamentoValor}
+                  onChange={(e) => setNovoPagamentoValor(e.target.value)}
+                />
+              </div>
+              <div className="space-y-1">
+                <FieldLabelWithAdd
+                  onAdd={() => setNovaFormaModalOpen(true)}
+                  addTitle="Cadastrar nova forma de pagamento"
+                >
+                  Forma de pagamento
+                </FieldLabelWithAdd>
+                <select
+                  value={novoPagamentoForma}
+                  onChange={(e) => setNovoPagamentoForma(e.target.value)}
+                  className="h-9 w-full rounded-md border border-slate-300 bg-white px-3 text-sm"
+                >
+                  <option value="">Selecione...</option>
+                  {formasPagamento?.map((f) => (
+                    <option key={f.id} value={f.nome}>
+                      {f.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <Label>Observação (opcional)</Label>
+                <Input
+                  value={novoPagamentoObs}
+                  onChange={(e) => setNovoPagamentoObs(e.target.value)}
+                />
+              </div>
             </div>
             <Button onClick={registrarNovoPagamento} disabled={registrarPagamento.isPending}>
               {registrarPagamento.isPending ? "Registrando..." : "Registrar pagamento"}
             </Button>
+
+            <QuickAddFormaPagamentoModal
+              open={novaFormaModalOpen}
+              onClose={() => setNovaFormaModalOpen(false)}
+              onCreated={(novaForma) => setNovoPagamentoForma(novaForma.nome)}
+            />
           </CardContent>
         </Card>
       )}

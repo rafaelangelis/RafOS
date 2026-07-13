@@ -130,3 +130,12 @@ model Pagamento {
 
   @@map("pagamentos")
 }
+
+model FormaPagamento {
+  id       Int      @id @default(autoincrement())
+  nome     String   @unique
+  ativo    Boolean  @default(true)
+  criadoEm DateTime @default(now()) @map("criado_em")
+
+  @@map("formas_pagamento")
+}
